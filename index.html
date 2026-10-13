@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Школа Полётов на Метле около Хогвартса</title>
+    <!-- Tailwind CSS for modern responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js for high performance 3D graphics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #87ceeb;
+            font-family: 'Georgia', serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.8);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d4af37;
+            border-radius: 3px;
+        }
+        .hud-btn {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(245, 158, 11, 0.6);
+            color: #fef08a;
+            border-radius: 12px;
+            padding: 12px 18px;
+            font-weight: bold;
+            backdrop-filter: blur(8px);
+            transition: all 0.15s ease;
+            touch-action: manipulation;
+        }
+        .hud-btn:active, .hud-btn.active {
+            background: rgba(217, 119, 6, 0.85);
+            color: #020617;
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="text-amber-100 bg-sky-950" tabindex="0" id="body-root">
+
+    <!-- Sidebar Menu Button (Broom Icon) -->
+    <button id="sidebar-toggle" class="absolute top-5 left-5 z-40 bg-slate-900/90 hover:bg-amber-900/80 border-2 border-amber-500 text-amber-300 p-3 rounded-xl shadow-2xl flex items-center gap-2 transition-all cursor-pointer backdrop-blur-md">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11l-6-6m0 0l-6 6m6-6v12"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 21h14"></path>
+        </svg>
+        <span class="font-bold tracking-wide hidden sm:inline">Ангар Мётел</span>
+    </button>
+
+    <!-- Side Menu: Broom Models -->
+    <div id="sidebar" class="fixed top-0 left-[-320px] w-80 h-full bg-slate-950/95 border-r-2 border-amber-600/60 z-50 transition-all duration-300 p-6 flex flex-col shadow-2xl backdrop-blur-lg">
+        <div class="flex justify-between items-center mb-8 border-b border-amber-600/40 pb-4">
+            <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">🧹 Выбор Метлы</h2>
+            <button id="sidebar-close" class="text-amber-400 hover:text-white text-2xl font-bold">&times;</button>
+        </div>
+        <div id="broom-list" class="flex flex-col gap-4 overflow-y-auto flex-1 pr-1">
+            <!-- Populated via JS -->
+        </div>
+    </div>
+
+    <!-- Main Safety & Start Overlay -->
+    <div id="main-overlay" class="absolute inset-0 z-30 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div class="max-w-2xl w-full bg-slate-900/95 border-2 border-amber-500/80 rounded-2xl p-8 shadow-2xl flex flex-col gap-6 text-center">
+            <h1 class="text-3xl font-extrabold text-amber-400 tracking-wider">Школа Полётов около Хогвартса</h1>
+            
+            <!-- Safety Briefing Section -->
+            <div class="bg-slate-950/70 border border-amber-600/40 p-5 rounded-xl text-left text-sm leading-relaxed text-amber-200/90 shadow-inner">
+                <h3 class="text-amber-400 font-bold text-base mb-2 flex items-center gap-2">
+                    <span>⚠️</span> Техника безопасности и управление:
+                </h3>
+                <ul class="list-disc list-inside space-y-1.5">
+                    <li><strong>Управление на ПК / Ноутбуке:</strong> <span class="text-white bg-slate-800 px-1.5 py-0.5 rounded border border-amber-500/40">W</span> или <span class="text-white bg-slate-800 px-1.5 py-0.5 rounded border border-amber-500/40">↑</span> — Набор высоты (ВВЕРХ).</li>
+                    <li><span class="text-white bg-slate-800 px-1.5 py-0.5 rounded border border-amber-500/40">S</span> или <span class="text-white bg-slate-800 px-1.5 py-0.5 rounded border border-amber-500/40">↓</span> — Снижение (ВНИЗ).</li>
+                    <li><span class="text-white bg-slate-800 px-1.5 py-0.5 rounded border border-amber-500/40">A</span> / <span class="text-white bg-slate-800 px-1.5 py-0.5 rounded border border-amber-500/40">D</span> или <span class="text-white bg-slate-800 px-1.5 py-0.5 rounded border border-amber-500/40">←</span> / <span class="text-white bg-slate-800 px-1.5 py-0.5 rounded border border-amber-500/40">→</span> — Развороты ВЛЕВО / ВПРАВО.</li>
+                    <li>Для свободной камеры зажмите ЛКМ и двигайте мышь. Также доступны <strong>экранные кнопки</strong> и сенсорный джойстик!</li>
+                    <li>Кольца манёвра расположены на большом отдалении в открытом небе.</li>
+                </ul>
+            </div>
+
+            <!-- Practice Button -->
+            <button id="start-practice-btn" class="w-full py-4 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-extrabold text-lg rounded-xl shadow-lg transition-transform transform hover:scale-[1.02] cursor-pointer">
+                Открыть Меню Манёвров
+            </button>
+        </div>
+    </div>
+
+    <!-- Maneuvers Practice Menu Overlay -->
+    <div id="practice-menu" class="absolute inset-0 z-30 hidden items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto">
+        <div class="max-w-3xl w-full bg-slate-900/95 border-2 border-amber-500/80 rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6">
+            <div class="flex justify-between items-center border-b border-amber-600/40 pb-4">
+                <h2 class="text-2xl font-bold text-amber-400">Выберите Учебный Манёвр</h2>
+                <button id="close-practice-menu" class="text-amber-400 hover:text-white text-2xl font-bold">&times;</button>
+            </div>
+            <p class="text-sm text-amber-200/80 text-center">Все 10 упражнений проходят над масштабной долиной с замком Хогвартс:</p>
+            
+            <div id="maneuvers-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- In-Game HUD -->
+    <div id="hud" class="absolute inset-0 pointer-events-none z-20 hidden flex flex-col justify-between p-4 sm:p-6">
+        <!-- Top HUD Bar -->
+        <div class="flex justify-between items-start gap-4">
+            <div class="bg-slate-900/80 border border-amber-500/50 px-4 py-2 rounded-xl backdrop-blur-md text-sm pointer-events-auto">
+                <div id="hud-maneuver" class="font-bold text-amber-400">Манёвр: Ожидание выбора</div>
+                <div id="hud-progress" class="text-amber-200/80">Чекпоинты: 0 / 0</div>
+            </div>
+            <div class="bg-slate-900/80 border border-amber-500/50 px-4 py-2 rounded-xl backdrop-blur-md text-right text-sm pointer-events-auto">
+                <div id="hud-broom" class="font-bold text-amber-400">Метла: Nimbus 2000</div>
+                <div id="hud-speed" class="text-amber-200/80">Скорость: 0 км/ч</div>
+            </div>
+        </div>
+
+        <!-- Center Crosshair -->
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div class="w-3 h-3 border-2 border-amber-400/80 rounded-full bg-amber-400/20"></div>
+        </div>
+
+        <!-- Bottom Controls (On-Screen Touch/Click Buttons & Joystick) -->
+        <div class="flex justify-between items-end pb-2 pointer-events-auto w-full">
+            <!-- Left Controls: Directional Buttons for PC/Laptop -->
+            <div class="flex flex-col gap-2">
+                <div class="flex gap-2">
+                    <button id="btn-up" class="hud-btn">▲ Вверх (W)</button>
+                    <button id="btn-down" class="hud-btn">▼ Вниз (S)</button>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btn-left" class="hud-btn">◀ Влево (A)</button>
+                    <button id="btn-right" class="hud-btn">Вправо (D) ▶</button>
+                </div>
+            </div>
+
+            <!-- Virtual Joystick for Mobile (Touch) -->
+            <div id="joystick-base" class="w-28 h-28 bg-slate-900/70 border-2 border-amber-500/60 rounded-full relative pointer-events-auto backdrop-blur-sm touch-none flex items-center justify-center shadow-xl sm:hidden">
+                <div id="joystick-stick" class="w-12 h-12 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-full absolute shadow-lg transition-transform duration-75"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Completion Celebration Overlay -->
+    <div id="celebration-overlay" class="absolute inset-0 z-40 hidden items-center justify-center bg-black/85 backdrop-blur-md p-4">
+        <div class="max-w-lg w-full bg-slate-900 border-4 border-amber-400 rounded-3xl p-8 text-center shadow-2xl flex flex-col gap-6 animate-pulse">
+            <div class="text-6xl">🏆</div>
+            <h2 class="text-3xl font-extrabold text-amber-400">Поздравляем с освоением манёвра!</h2>
+            <p id="celebration-text" class="text-amber-100 text-lg">Вы отлично преодолели всю дистанцию и прошли все чекпоинты над Хогвартсом!</p>
+            <button id="restart-maneuver-btn" class="py-3 px-6 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-bold text-lg rounded-xl shadow-lg transition-transform transform hover:scale-105 cursor-pointer">
+                Продолжить тренировку
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const brooms = [
+            { id: 'nimbus2000', name: 'Nimbus 2000', speed: 1.2, agility: 1.2, desc: 'Классическая сбалансированная модель для отличного контроля.' },
+            { id: 'firebolt', name: 'Молния (Firebolt)', speed: 1.8, agility: 1.6, desc: 'Профессиональная скоростная метла с мощным ускорением.' },
+            { id: 'comet260', name: 'Комета 260', speed: 0.95, agility: 1.0, desc: 'Устойчивая учебная модель для плавных маневров.' }
+        ];
+
+        let selectedBroom = brooms[0];
+
+        const maneuvers = [
+            { id: 1, name: '1. Набор высоты и снижение', desc: 'Затяжной полет на дальнюю дистанцию с перепадом высот.', type: 'smooth' },
+            { id: 2, name: '2. Широкий разворот направо', desc: 'Полет по огромной дуге над всей долиной Хогвартса.', type: 'wide_right' },
+            { id: 3, name: '3. Широкий разворот налево', desc: 'Масштабная обходная траектория слева от стадиона.', type: 'wide_left' },
+            { id: 4, name: '4. Размашистая змейка', desc: 'Змейка с большими интервалами в открытом небе.', type: 'zigzag' },
+            { id: 5, name: '5. Глубокое пике и стремительный взлёт', desc: 'Спуск с высоты птичьего полета к самому замку.', type: 'dive' },
+            { id: 6, name: '6. Скоростная восьмерка', desc: 'Огромный маршрут в форме цифры 8 над ареной.', type: 'figure8' },
+            { id: 7, name: '7. Мертвая петля над замком', desc: 'Вертикальный оборот на максимальном удалении.', type: 'loop' },
+            { id: 8, name: '8. Осевая бочка', desc: 'Пролет сквозь дальние кольца с осевым вращением.', type: 'roll' },
+            { id: 9, name: '9. Пролёт над башнями Хогвартса', desc: 'Экзаменационная траектория прямо над крышами замка.', type: 'hogwarts_fly' },
+            { id: 10, name: '10. Финальный гранд-маршрут', desc: 'Комплексный длинный полет через всю локацию.', type: 'grand_tour' }
+        ];
+
+        let currentManeuver = null;
+        let checkpoints = [];
+        let currentCheckpointIndex = 0;
+        let flightActive = false;
+
+        // Three.js Core Variables
+        let scene, camera, renderer;
+        let playerGroup, broomMesh;
+        let castleGroup, pitchGroup;
+        let checkpointMeshes = [];
+        let pathLine = null;
+
+        // Controls
+        let keyW = false, keyS = false, keyA = false, keyD = false;
+        let btnUpPressed = false, btnDownPressed = false, btnLeftPressed = false, btnRightPressed = false;
+        let joystickX = 0, joystickY = 0;
+        let isMouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let cameraPitch = 0, cameraYaw = 0;
+
+        let playerVelocity = new THREE.Vector3();
+        // SPAWN FAR AWAY FOR SCENIC PANORAMIC VIEW
+        let spawnPosition = new THREE.Vector3(0, 120, 450);
+        let playerPosition = new THREE.Vector3().copy(spawnPosition);
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initBroomList();
+            initManeuversList();
+            initUIEvents();
+            init3D();
+            animate();
+            
+            document.getElementById('body-root').focus();
+        });
+
+        function initBroomList() {
+            const listEl = document.getElementById('broom-list');
+            listEl.innerHTML = '';
+            brooms.forEach(b => {
+                const item = document.createElement('div');
+                item.className = `p-4 rounded-xl border cursor-pointer transition-all ${selectedBroom.id === b.id ? 'bg-amber-950/60 border-amber-400 shadow-lg' : 'bg-slate-900 border-slate-800 hover:border-amber-600'}`;
+                item.innerHTML = `
+                    <div class="font-bold text-amber-300 text-lg">${b.name}</div>
+                    <div class="text-xs text-amber-200/70 mt-1">${b.desc}</div>
+                    <div class="text-xs font-semibold text-amber-400 mt-2">Скорость: ${(b.speed * 100).toFixed(0)}% | Маневренность: ${(b.agility * 100).toFixed(0)}%</div>
+                `;
+                item.onclick = () => {
+                    selectedBroom = b;
+                    document.getElementById('hud-broom').textContent = `Метла: ${b.name}`;
+                    initBroomList();
+                };
+                listEl.appendChild(item);
+            });
+        }
+
+        function initManeuversList() {
+            const gridEl = document.getElementById('maneuvers-grid');
+            gridEl.innerHTML = '';
+            maneuvers.forEach(m => {
+                const btn = document.createElement('button');
+                btn.className = 'p-4 rounded-xl bg-slate-950/80 border border-amber-600/40 hover:border-amber-400 hover:bg-amber-950/40 text-left transition-all cursor-pointer flex flex-col gap-1';
+                btn.innerHTML = `
+                    <div class="font-bold text-amber-300 text-base">${m.name}</div>
+                    <div class="text-xs text-amber-200/70">${m.desc}</div>
+                `;
+                btn.onclick = () => startManeuver(m);
+                gridEl.appendChild(btn);
+            });
+        }
+
+        function bindButtonEvents(btnId, setFlag) {
+            const el = document.getElementById(btnId);
+            if (!el) return;
+            const start = (e) => { e.preventDefault(); setFlag(true); el.classList.add('active'); };
+            const end = (e) => { e.preventDefault(); setFlag(false); el.classList.remove('active'); };
+            el.addEventListener('mousedown', start);
+            el.addEventListener('mouseup', end);
+            el.addEventListener('mouseleave', end);
+            el.addEventListener('touchstart', start);
+            el.addEventListener('touchend', end);
+        }
+
+        function initUIEvents() {
+            const sidebar = document.getElementById('sidebar');
+            document.getElementById('sidebar-toggle').onclick = () => sidebar.classList.toggle('left-0');
+            document.getElementById('sidebar-close').onclick = () => sidebar.classList.remove('left-0');
+
+            document.getElementById('start-practice-btn').onclick = () => {
+                document.getElementById('main-overlay').classList.add('hidden');
+                document.getElementById('practice-menu').classList.remove('hidden');
+                document.getElementById('practice-menu').classList.add('flex');
+            };
+
+            document.getElementById('close-practice-menu').onclick = () => {
+                document.getElementById('practice-menu').classList.add('hidden');
+                document.getElementById('practice-menu').classList.remove('flex');
+                if (!flightActive) {
+                    document.getElementById('main-overlay').classList.remove('hidden');
+                }
+            };
+
+            document.getElementById('restart-maneuver-btn').onclick = () => {
+                document.getElementById('celebration-overlay').classList.add('hidden');
+                document.getElementById('practice-menu').classList.remove('hidden');
+                document.getElementById('practice-menu').classList.add('flex');
+                flightActive = false;
+            };
+
+            // Bind On-Screen Controls
+            bindButtonEvents('btn-up', val => btnUpPressed = val);
+            bindButtonEvents('btn-down', val => btnDownPressed = val);
+            bindButtonEvents('btn-left', val => btnLeftPressed = val);
+            bindButtonEvents('btn-right', val => btnRightPressed = val);
+
+            // Mobile Joystick
+            const joystickBase = document.getElementById('joystick-base');
+            const joystickStick = document.getElementById('joystick-stick');
+            let joystickActive = false;
+            let joystickCenter = { x: 0, y: 0 };
+            const maxRadius = 40;
+
+            joystickBase.addEventListener('pointerdown', (e) => {
+                joystickActive = true;
+                const rect = joystickBase.getBoundingClientRect();
+                joystickCenter.x = rect.left + rect.width / 2;
+                joystickCenter.y = rect.top + rect.height / 2;
+                updateJoystick(e.clientX, e.clientY);
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (!joystickActive) return;
+                updateJoystick(e.clientX, e.clientY);
+            });
+
+            window.addEventListener('pointerup', () => {
+                if (!joystickActive) return;
+                joystickActive = false;
+                joystickStick.style.transform = `translate(0px, 0px)`;
+                joystickX = 0;
+                joystickY = 0;
+            });
+
+            function updateJoystick(clientX, clientY) {
+                let dx = clientX - joystickCenter.x;
+                let dy = clientY - joystickCenter.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > maxRadius) {
+                    dx = (dx / dist) * maxRadius;
+                    dy = (dy / dist) * maxRadius;
+                }
+                joystickStick.style.transform = `translate(${dx}px, ${dy}px)`;
+                joystickX = dx / maxRadius;
+                joystickY = - (dy / maxRadius);
+            }
+
+            // Mouse Look Around
+            window.addEventListener('mousedown', (e) => {
+                if (e.target.closest('button') || e.target.closest('#sidebar') || e.target.closest('#practice-menu') || e.target.closest('#main-overlay')) return;
+                isMouseDown = true;
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isMouseDown) return;
+                let deltaX = e.clientX - mouseX;
+                let deltaY = e.clientY - mouseY;
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+
+                cameraYaw -= deltaX * 0.003;
+                cameraPitch -= deltaY * 0.003;
+                cameraPitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, cameraPitch));
+            });
+
+            window.addEventListener('mouseup', () => { isMouseDown = false; });
+
+            // Keyboard Listeners (WASD + Arrow Keys)
+            window.addEventListener('keydown', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w' || e.key === 'ArrowUp') { keyW = true; }
+                if (k === 's' || e.key === 'ArrowDown') { keyS = true; }
+                if (k === 'a' || e.key === 'ArrowLeft') { keyA = true; }
+                if (k === 'd' || e.key === 'ArrowRight') { keyD = true; }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w' || e.key === 'ArrowUp') { keyW = false; }
+                if (k === 's' || e.key === 'ArrowDown') { keyS = false; }
+                if (k === 'a' || e.key === 'ArrowLeft') { keyA = false; }
+                if (k === 'd' || e.key === 'ArrowRight') { keyD = false; }
+            });
+        }
+
+        function init3D() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x7ec0ee); // Bright magic daylight
+            scene.fog = new THREE.FogExp2(0x7ec0ee, 0.0003);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 8000);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xfffaed, 1.5);
+            sunLight.position.set(1000, 1500, 800);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.far = 4000;
+            const d = 2000;
+            sunLight.shadow.camera.left = -d;
+            sunLight.shadow.camera.right = d;
+            sunLight.shadow.camera.top = d;
+            sunLight.shadow.camera.bottom = -d;
+            scene.add(sunLight);
+
+            buildHogwartsAndTerrain();
+
+            // Player Broom
+            playerGroup = new THREE.Group();
+            playerGroup.position.copy(spawnPosition);
+            scene.add(playerGroup);
+
+            const broomGeo = new THREE.CylinderGeometry(0.1, 0.16, 4.0, 8);
+            broomGeo.rotateX(Math.PI / 2);
+            const broomMat = new THREE.MeshStandardMaterial({ color: 0x3a1e05, roughness: 0.5 });
+            broomMesh = new THREE.Mesh(broomGeo, broomMat);
+            broomMesh.position.set(0, -0.6, -1.2);
+            playerGroup.add(broomMesh);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function buildHogwartsAndTerrain() {
+            // Massive Terrain (4000x4000 units)
+            const terrainGeo = new THREE.PlaneGeometry(5000, 5000, 64, 64);
+            const terrainMat = new THREE.MeshStandardMaterial({ color: 0x357a38, roughness: 0.9 });
+            const terrain = new THREE.Mesh(terrainGeo, terrainMat);
+            terrain.rotation.x = -Math.PI / 2;
+            terrain.receiveShadow = true;
+            scene.add(terrain);
+
+            // Quidditch Pitch
+            pitchGroup = new THREE.Group();
+            pitchGroup.position.set(0, 0, -200);
+            scene.add(pitchGroup);
+
+            const fieldGeo = new THREE.PlaneGeometry(1200, 800);
+            const fieldMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 0.8 });
+            const field = new THREE.Mesh(fieldGeo, fieldMat);
+            field.rotation.x = -Math.PI / 2;
+            field.position.y = 0.5;
+            pitchGroup.add(field);
+
+            // Grandstands around Pitch
+            const standMat = new THREE.MeshStandardMaterial({ color: 0x5a4d41, roughness: 0.7 });
+            for (let i = 0; i < 4; i++) {
+                const isLong = i % 2 === 0;
+                const width = isLong ? 1100 : 750;
+                const standGroup = new THREE.Group();
+                for (let tier = 0; tier < 8; tier++) {
+                    const tierGeo = new THREE.BoxGeometry(width - tier * 20, 14, 20);
+                    const tierMesh = new THREE.Mesh(tierGeo, standMat);
+                    tierMesh.position.set(0, tier * 12 + 7, tier * 18);
+                    standGroup.add(tierMesh);
+                }
+                const angle = (i * Math.PI) / 2;
+                const dist = isLong ? 420 : 600;
+                standGroup.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+                standGroup.rotation.y = -angle;
+                pitchGroup.add(standGroup);
+
+                // Hoops
+                createGoalHoops(isLong ? (i === 0 ? 350 : -350) : 0, isLong ? 0 : (i === 1 ? 350 : -350));
+            }
+
+            // Hogwarts Castle Complex (Positioned at background z: -900)
+            castleGroup = new THREE.Group();
+            castleGroup.position.set(-200, 0, -1100);
+            scene.add(castleGroup);
+
+            const stoneMat = new THREE.MeshStandardMaterial({ color: 0x6e7075, roughness: 0.8 });
+            const roofMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
+
+            // Main Keep Tower
+            const keepGeo = new THREE.CylinderGeometry(60, 75, 320, 16);
+            const keep = new THREE.Mesh(keepGeo, stoneMat);
+            keep.position.set(0, 160, 0);
+            castleGroup.add(keep);
+
+            const roofGeo = new THREE.ConeGeometry(70, 120, 16);
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.set(0, 380, 0);
+            castleGroup.add(roof);
+
+            // Surrounding Towers and Walls
+            const towerOffsets = [
+                { x: 180, z: 120, h: 240, r: 40 },
+                { x: -180, z: 100, h: 220, r: 45 },
+                { x: 220, z: -150, h: 280, r: 50 },
+                { x: -220, z: -120, h: 200, r: 35 }
+            ];
+
+            towerOffsets.forEach(t => {
+                const tw = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r + 10, t.h, 12), stoneMat);
+                tw.position.set(t.x, t.h / 2, t.z);
+                castleGroup.add(tw);
+
+                const tr = new THREE.Mesh(new THREE.ConeGeometry(t.r + 5, 80, 12), roofMat);
+                tr.position.set(t.x, t.h + 40, t.z);
+                castleGroup.add(tr);
+            });
+
+            // Great Hall Building
+            const hallGeo = new THREE.BoxGeometry(260, 120, 140);
+            const hall = new THREE.Mesh(hallGeo, stoneMat);
+            hall.position.set(0, 60, 180);
+            castleGroup.add(hall);
+        }
+
+        function createGoalHoops(x, z) {
+            const hoopGroup = new THREE.Group();
+            const poleMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.2 });
+
+            [-50, 0, 50].forEach(offsetX => {
+                const height = 90 + Math.abs(offsetX) * 0.4;
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.0, height, 16), poleMat);
+                pole.position.set(x + offsetX, height / 2, z);
+                hoopGroup.add(pole);
+
+                const torus = new THREE.Mesh(new THREE.TorusGeometry(16, 1.5, 16, 32), poleMat);
+                torus.position.set(x + offsetX, height, z);
+                hoopGroup.add(torus);
+            });
+            pitchGroup.add(hoopGroup);
+        }
+
+        function startManeuver(maneuver) {
+            currentManeuver = maneuver;
+            document.getElementById('practice-menu').classList.add('hidden');
+            document.getElementById('practice-menu').classList.remove('flex');
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('hud-maneuver').textContent = `Манёвр: ${maneuver.name}`;
+
+            // Reset Position to Far Away Viewpoint
+            playerPosition.copy(spawnPosition);
+            cameraPitch = 0;
+            cameraYaw = 0;
+            playerVelocity.set(0, 0, 0);
+
+            generateCheckpoints(maneuver.type);
+            currentCheckpointIndex = 0;
+            updateHudProgress();
+            flightActive = true;
+        }
+
+        function generateCheckpoints(type) {
+            checkpointMeshes.forEach(m => scene.remove(m));
+            checkpointMeshes = [];
+            if (pathLine) {
+                scene.remove(pathLine);
+                pathLine = null;
+            }
+
+            // CHECKPOINTS ARE PLACED AT VERY FAR DISTANCES (150-350 UNITS APART)
+            let points = [];
+            if (type === 'smooth') {
+                points = [
+                    new THREE.Vector3(0, 110, 250),
+                    new THREE.Vector3(150, 140, 0),
+                    new THREE.Vector3(0, 170, -300),
+                    new THREE.Vector3(-200, 120, -600),
+                    new THREE.Vector3(0, 90, -900)
+                ];
+            } else if (type === 'wide_right') {
+                points = [
+                    new THREE.Vector3(0, 110, 250),
+                    new THREE.Vector3(300, 130, 100),
+                    new THREE.Vector3(450, 150, -300),
+                    new THREE.Vector3(200, 120, -700),
+                    new THREE.Vector3(-100, 100, -950)
+                ];
+            } else if (type === 'wide_left') {
+                points = [
+                    new THREE.Vector3(0, 110, 250),
+                    new THREE.Vector3(-300, 130, 100),
+                    new THREE.Vector3(-450, 150, -300),
+                    new THREE.Vector3(-200, 120, -700),
+                    new THREE.Vector3(100, 100, -950)
+                ];
+            } else if (type === 'zigzag') {
+                points = [
+                    new THREE.Vector3(-150, 100, 250),
+                    new THREE.Vector3(250, 140, 0),
+                    new THREE.Vector3(-250, 160, -300),
+                    new THREE.Vector3(250, 130, -600),
+                    new THREE.Vector3(-150, 110, -900)
+                ];
+            } else if (type === 'dive') {
+                points = [
+                    new THREE.Vector3(0, 260, 250),
+                    new THREE.Vector3(0, 150, 0),
+                    new THREE.Vector3(0, 45, -300),
+                    new THREE.Vector3(0, 160, -650),
+                    new THREE.Vector3(0, 240, -1000)
+                ];
+            } else if (type === 'figure8') {
+                points = [
+                    new THREE.Vector3(0, 120, 250),
+                    new THREE.Vector3(250, 150, 0),
+                    new THREE.Vector3(0, 130, -300),
+                    new THREE.Vector3(-250, 150, -600),
+                    new THREE.Vector3(0, 120, -900)
+                ];
+            } else if (type === 'hogwarts_fly') {
+                points = [
+                    new THREE.Vector3(0, 120, 200),
+                    new THREE.Vector3(-100, 180, -200),
+                    new THREE.Vector3(-200, 220, -600),
+                    new THREE.Vector3(-200, 250, -1000),
+                    new THREE.Vector3(-200, 210, -1300)
+                ];
+            } else { // Grand Tour & defaults
+                points = [
+                    new THREE.Vector3(-200, 100, 300),
+                    new THREE.Vector3(200, 160, 50),
+                    new THREE.Vector3(300, 200, -350),
+                    new THREE.Vector3(-150, 180, -750),
+                    new THREE.Vector3(-200, 220, -1150)
+                ];
+            }
+
+            checkpoints = points;
+
+            // Bright Golden Light Rings
+            const cpMat = new THREE.MeshBasicMaterial({ color: 0xfacc15, wireframe: true, transparent: true, opacity: 0.9 });
+            const cpGeo = new THREE.TorusGeometry(18, 1.8, 16, 32);
+
+            points.forEach((pt, idx) => {
+                const mesh = new THREE.Mesh(cpGeo, cpMat.clone());
+                mesh.position.copy(pt);
+                if (idx > 0) {
+                    mesh.lookAt(points[idx - 1]);
+                } else if (points.length > 1) {
+                    mesh.lookAt(points[1]);
+                }
+                scene.add(mesh);
+                checkpointMeshes.push(mesh);
+            });
+
+            // Dynamic Path Guide
+            const curve = new THREE.CatmullRomCurve3(points);
+            const tubeGeo = new THREE.TubeGeometry(curve, 96, 2.0, 8, false);
+            const tubeMat = new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.4 });
+            pathLine = new THREE.Mesh(tubeGeo, tubeMat);
+            scene.add(pathLine);
+
+            updateActiveCheckpointVisuals();
+        }
+
+        function updateActiveCheckpointVisuals() {
+            checkpointMeshes.forEach((mesh, idx) => {
+                if (idx === currentCheckpointIndex) {
+                    mesh.material.color.setHex(0xfef08a);
+                    mesh.material.opacity = 1.0;
+                    mesh.scale.set(1.3, 1.3, 1.3);
+                } else if (idx < currentCheckpointIndex) {
+                    mesh.material.color.setHex(0x22c55e);
+                    mesh.material.opacity = 0.35;
+                    mesh.scale.set(0.9, 0.9, 0.9);
+                } else {
+                    mesh.material.color.setHex(0xfacc15);
+                    mesh.material.opacity = 0.6;
+                    mesh.scale.set(1.0, 1.0, 1.0);
+                }
+            });
+        }
+
+        function updateHudProgress() {
+            document.getElementById('hud-progress').textContent = `Чекпоинты: ${currentCheckpointIndex} / ${checkpoints.length}`;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        let clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            if (flightActive) {
+                // Inputs combining Keyboard, On-Screen Buttons, and Mobile Joystick
+                let isUp = keyW || btnUpPressed;
+                let isDown = keyS || btnDownPressed;
+                let isLeft = keyA || btnLeftPressed;
+                let isRight = keyD || btnRightPressed;
+
+                let vertInput = ((isUp ? 1 : 0) - (isDown ? 1 : 0)) + joystickY;
+                let horizInput = ((isRight ? 1 : 0) - (isLeft ? 1 : 0)) + joystickX;
+
+                cameraYaw -= horizInput * 1.8 * delta * selectedBroom.agility;
+
+                const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
+                const up = new THREE.Vector3(0, 1, 0);
+
+                let baseSpeed = 80.0 * selectedBroom.speed;
+                let targetVelocity = forward.clone().multiplyScalar(baseSpeed);
+                
+                // Vertical Ascent / Descent Control
+                targetVelocity.addScaledVector(up, vertInput * 50.0);
+
+                playerVelocity.lerp(targetVelocity, 0.12);
+                playerPosition.addScaledVector(playerVelocity, delta);
+
+                // Altitude bounds
+                playerPosition.y = Math.max(8, Math.min(600, playerPosition.y));
+
+                playerGroup.position.copy(playerPosition);
+                playerGroup.rotation.y = cameraYaw;
+                playerGroup.rotation.z = -horizInput * 0.45;
+
+                // FPV Camera setup
+                camera.position.copy(playerPosition);
+                camera.position.y += 1.2;
+                
+                const lookTarget = camera.position.clone().add(forward.clone().multiplyScalar(100)).add(new THREE.Vector3(0, cameraPitch * 60, 0));
+                camera.lookAt(lookTarget);
+
+                const currentSpeedKmh = Math.round(playerVelocity.length() * 3.6);
+                document.getElementById('hud-speed').textContent = `Скорость: ${currentSpeedKmh} км/ч`;
+
+                // Checkpoint Hit Detection (28 unit radius for smooth spacious flight)
+                if (currentCheckpointIndex < checkpoints.length) {
+                    const activeCp = checkpoints[currentCheckpointIndex];
+                    const dist = playerPosition.distanceTo(activeCp);
+                    if (dist < 28) {
+                        currentCheckpointIndex++;
+                        updateActiveCheckpointVisuals();
+                        updateHudProgress();
+
+                        if (currentCheckpointIndex >= checkpoints.length) {
+                            flightActive = false;
+                            document.getElementById('hud').classList.add('hidden');
+                            document.getElementById('celebration-overlay').classList.remove('hidden');
+                            document.getElementById('celebration-overlay').classList.add('flex');
+                        }
+                    }
+                }
+            } else {
+                // Smooth Panoramic Camera when idling
+                const time = clock.getElapsedTime() * 0.08;
+                camera.position.set(Math.cos(time) * 450, 160, Math.sin(time) * 450);
+                camera.lookAt(-100, 100, -500);
+            }
+
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
